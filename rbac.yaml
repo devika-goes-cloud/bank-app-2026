@@ -1,0 +1,95 @@
+---
+## Create Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jenkins
+  namespace: myapp
+---
+## Create Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: app-role
+  namespace: myapp
+rules:
+  - apiGroups:
+      - ""
+      - apps
+      - autoscaling
+      - batch
+      - extensions
+      - policy
+      - rbac.authorization.k8s.io
+    resources:
+      - pods
+      - pods/log
+      - configmaps
+      - deployments
+      - events
+      - horizontalpodautoscalers
+      - ingresses
+      - secrets               # ❗ Not recommended
+      - persistentvolumeclaims # ❗ Not recommended
+      - replicasets
+      - serviceaccounts        # ❗ Not recommended
+      - services
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+---
+## Bind the role to the service account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: app-rolebinding
+  namespace: myapp
+subjects:
+  - kind: ServiceAccount
+    name: jenkins
+    namespace: myapp
+roleRef:
+  kind: Role
+  name: app-role
+  apiGroup: rbac.authorization.k8s.io
+---
+## Create ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: jenkins-cluster-role
+rules:
+  - apiGroups:
+      - ""
+      - apps
+    resources:
+      - nodes
+      - namespaces
+      - persistentvolumes
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+---
+## Bind ClusterRole to Service Account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: jenkins-cluster-role-binding
+subjects:
+  - kind: ServiceAccount
+    name: jenkins
+    namespace: myapp
+roleRef:
+  kind: ClusterRole
+  name: jenkins-cluster-role
+  apiGroup: rbac.authorization.k8s.io
