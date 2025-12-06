@@ -26,17 +26,13 @@ spec:
         ports:
         - containerPort: 3306
           name: mysql
----
-# MySQL Service
-apiVersion: v1
-kind: Service
-metadata:
-  name: mysql-service
-spec:
-  ports:
-  - port: 3306
-  selector:
-    app: mysql
+        resources:
+          requests: 
+            memory: "512Mi" # Minimum resources required
+            cpu: "250m"
+          limits: 
+            memory: "1Gi" # Maximum resources allowed
+            cpu: "500m"
 ---
 # Java Application Deployment
 apiVersion: apps/v1
@@ -55,7 +51,7 @@ spec:
     spec:
       containers:
       - name: bankapp
-        image: IMAGE_PLACEHOLDER
+        image: devika12345/myapp
         ports:
         - containerPort: 8080
         env:
@@ -65,16 +61,3 @@ spec:
           value: root
         - name: SPRING_DATASOURCE_PASSWORD
           value: Test@123
----
-# Bank Application Service
-apiVersion: v1
-kind: Service
-metadata:
-  name: bankapp-service
-spec:
-  type: LoadBalancer
-  ports:
-  - port: 80
-    targetPort: 8080
-  selector:
-    app: bankapp
