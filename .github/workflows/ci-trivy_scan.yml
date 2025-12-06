@@ -1,0 +1,17 @@
+name: Trivy Vulnerability Scan
+
+on:
+  workflow_call:
+
+jobs:
+  trivy:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH

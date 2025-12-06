@@ -1,0 +1,55 @@
+name: Main CI/CD Workflow
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  compile:
+    uses: ./.github/workflows/ci-compile.yml
+
+  test:
+    needs: compile
+    uses: ./.github/workflows/ci-test.yml
+
+  trivy_scan:
+    needs: test
+    uses: ./.github/workflows/ci-trivy_scan.yml
+
+  # build_artifact:
+  #   needs: trivy_scan
+  #   uses: ./.github/workflows/ci-build_artifact.yml
+  #   # secrets: inherit
+
+  sonarqube_static_code_analysis:
+    needs: trivy_scan
+    uses: ./.github/workflows/ci-sonarqube_static_code_analysis.yml
+    secrets: inherit
+
+  download_artifact:
+    needs: sonarqube_static_code_analysis
+    uses: ./.github/workflows/ci-download_artifact.yml
+
+  # build_and_push_docker_image:
+  #   needs: download_artifact
+  #   uses: ./.github/workflows/ci-build_docker_image.yml
+
+  # deploy_eks_cluster:
+  #   needs: build_and_push_docker_image
+  #   uses: ./.github/workflows/ci-deploy_eks_cluster.yml
+
+
+
+
+
+
+
+
+
+#   image:
+#     needs: [sonar_and_nexus]
+#     uses: ./.github/workflows/image-build-scan.yml
+#     with:
+#       push_latest: true
