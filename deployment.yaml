@@ -9,7 +9,7 @@ spec:
     matchLabels:
       app: mysql
   strategy:
-    type: Recreate
+    type: Recreate  # rolling update is not recommended for MySQL (DB should use Recreate or StatefulSet.)
   template:
     metadata:
       labels:
@@ -41,6 +41,12 @@ metadata:
   name: bankapp
 spec:
   replicas: 1
+  strategy:
+    type: RollingUpdate  # Tells Kubernetes to update pods one-by-one.
+    rollingUpdate:
+      maxSurge: 1            # one extra pod can be added during update (ensures zero downtime).
+      maxUnavailable: 0      # Not even one pod is allowed to go down until the new pod becomes fully ready. (keep ALL replicas available during the update.)
+      
   selector:
     matchLabels:
       app: bankapp
