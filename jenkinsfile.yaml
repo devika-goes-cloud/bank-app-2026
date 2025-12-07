@@ -1,1 +1,118 @@
-
+pipeline {
+    agent any
+    tools {
+        jdk 'JAVA_HOME'
+        maven 'MAVEN_HOME'
+    }
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
+    }
+    stages {
+        stage('Git Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/devika-goes-cloud/SpringBoot-App-EKS.git'
+            }
+        }
+        stage('Compile') {
+            steps {
+                sh "mvn compile"
+            }
+        }
+        stage('Test') {
+            steps {
+                sh "mvn test"
+            }
+        }
+        stage('Trivy FS Scan') {
+            steps {
+                sh "trivy fs --format table -o fs.html . "
+                archiveArtifacts 'fs.html'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh "mvn package -DskipTests=true"
+            }
+        }
+        stage("SonarQube Analysis") {
+            steps {
+                script {
+                    withSonarQubeEnv('sonar-server') {
+                        sh '''$SCANNER_HOME/bin/sonar-scanner \
+                                -Dsonar.projectName=springboot \
+                                -Dsonar.projectKey=springboot \
+                                -Dsonar.java.binaries=target'''
+                    }
+                }
+            }
+        }
+        stage('Docker build and tag') {
+            steps {
+                // sh "docker build -t devika12345/springboot:${BUILD_NUMBER} ."
+                sh "docker build -t devika12345/springboot:v1-stable ."
+            }
+        }
+        stage('Trivy image Scan') {
+            steps {
+                sh "trivy image devika12345/springboot:v1-stable --format table -o image.html"
+                archiveArtifacts 'image.html'
+            }
+        }
+        stage('Docker Push Image') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'dockerhub') {
+                        sh "docker push devika12345/springboot:v1-stable"
+                    }
+                }
+            }
+        }
+        stage('Deploy to kubernets') {
+            steps {
+                script {
+                    withKubeConfig(clusterName: 'mycluster', credentialsId: 'k8s', serverUrl: 'https://B18E12BF81A02624B83DD385816C9EF6.gr7.ap-south-1.eks.amazonaws.com') {
+                        sh "kubectl apply -f deployment.yaml"
+                        sh "kubectl apply -f service.yaml"
+                    }
+                }
+            }
+        }
+    }
+    post {
+        success {
+            echo "✅ Build & Quality Gate passed successfully!"
+            // Email on success
+            emailext (
+                subject: "✅ SUCCESS: ${JOB_NAME} #${BUILD_NUMBER}",
+                body: """<p>Build <b>SUCCESS</b> for job: ${JOB_NAME} <br/>
+                         Build number: ${BUILD_NUMBER} <br/>
+                         <a href='${BUILD_URL}'>Open build details</a></p>
+                         <p>Artifacts (if any) are attached.</p>""",
+                to: "team@example.com",
+                mimeType: 'text/html',
+                attachLog: true,
+                attachmentsPattern: "fs.html,image.html"
+            )
+        }
+        failure {
+            echo "❌ Build failed (check Quality Gate, tests, or other errors)."
+            // Email on failure
+            emailext (
+                subject: "❌ FAILURE: ${JOB_NAME} #${BUILD_NUMBER}",
+                body: """<p>Build <b>FAILED</b> for job: ${JOB_NAME} <br/>
+                         Build number: ${BUILD_NUMBER} <br/>
+                         <a href='${BUILD_URL}'>Open build details</a> <br/>
+                         Check console output: <a href='${BUILD_URL}console'>console</a></p>
+                         <p>Attached: Trivy reports (if generated).</p>""",
+                to: "devika@example.com,team@example.com",
+                mimeType: 'text/html',
+                attachLog: true,
+                attachmentsPattern: "fs.html,image.html"
+            )
+        }
+        always {
+            cleanWs()
+        }
+    }
+}
+        
